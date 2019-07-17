@@ -3,16 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
-	"github.com/ironman0x7b2/sentinel-sdk/app/hub"
-
+	"github.com/sentinel-official/hub/app"
 	"github.com/tendermint/tendermint/rpc/client"
-
 	tmTypes "github.com/tendermint/tendermint/types"
 
-	"github.com/ironman0x7b2/explorer/db"
-	"github.com/ironman0x7b2/explorer/utils"
+	"github.com/sentinel-official/explorer/controller"
+	"github.com/sentinel-official/explorer/db"
 )
 
 const (
@@ -22,23 +19,20 @@ const (
 )
 
 func main() {
-	fmt.Println("READY")
 	rpcClient := client.NewHTTP(rpcServer, "/websocket")
 	err := rpcClient.OnStart()
 	if err != nil {
 		panic(err)
 	}
+
 	ctx := context.Background()
-
-
 	block, err := rpcClient.Subscribe(ctx, "subscribe", eventNewBlock)
 	if err != nil {
 		panic(err)
 	}
 
-	var cdc = hub.MakeCodec()
-
-	var block_ tmTypes.EventDataNewBlock
+	cdc := app.MakeCodec()
+	_block := tmTypes.EventDataNewBlock{}
 	_db := db.DB()
 
 	go func() {
@@ -47,12 +41,12 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			err = json.Unmarshal(bz, &block_)
+			err = json.Unmarshal(bz, &_block)
 			if err != nil {
 				panic(err)
 			}
 
-			err = utils.ProcessAndInsertBlock(ctx, _db, block_)
+			err = controller.ProcessAndInsertBlock(ctx, _db, _block.Block)
 			if err != nil {
 				panic(err)
 			}
@@ -63,6 +57,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	var data tmTypes.EventDataTx
 
 	go func() {
@@ -77,7 +72,7 @@ func main() {
 				panic(err)
 			}
 
-			err = utils.ProcessAndInsertTx(ctx, cdc, _db, data, e.Tags["action"], e.Tags["sender"])
+			err = controller.ProcessAndInsertTx(ctx, cdc, _db, data, e.Tags["action"], e.Tags["sender"])
 			if err != nil {
 				panic(err)
 			}

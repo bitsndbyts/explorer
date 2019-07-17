@@ -6,5 +6,6 @@ import (
 
 func GetTxCollection(db *mongo.Database) *mongo.Collection {
 	collection := db.Collection("tx")
+
 	return collection
 }
